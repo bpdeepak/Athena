@@ -11,7 +11,7 @@ Project Athena is an Autonomous Multi-Agent Framework designed for Real-Time Pro
 
 **Key Deliverables:**
 - A High-Fidelity Enterprise Simulator ("Project Universe")
-- A Multi-Agent Reasoning Engine (LangGraph + Local LLM)
+- A Multi-Agent Reasoning Engine (LangGraph + dual-mode LLMProvider)
 - A GraphRAG Knowledge System (Neo4j + ChromaDB)
 
 ---
@@ -37,7 +37,7 @@ The rise of **Agentic AI** (2024-2026) has created new opportunities for autonom
 Industry trends driving this project:
 1. **LangGraph & Multi-Agent Orchestration** - Moving beyond single-prompt AI
 2. **GraphRAG Architecture** - Combining semantic search with structured reasoning
-3. **Privacy-First AI** - Local LLMs (Ollama) enabling air-gapped enterprise deployment
+3. **Dual-Mode AI** - Cloud APIs (Gemini free tier) for dev agility + local LLMs (Ollama) for air-gapped enterprise deployment, unified via a pluggable `LLMProvider` abstraction
 
 ---
 
@@ -134,8 +134,9 @@ The system achieves a 360-degree program view through five core capabilities:
 | Database | SQLite | Relational data store |
 | Database | Neo4j CE | Knowledge graph |
 | Database | ChromaDB | Vector embeddings |
-| AI Runtime | Ollama | Local LLM inference |
-| AI Model | Llama 3 (8B) | Reasoning engine |
+| AI Runtime (Dev) | Gemini 1.5 Flash | Cloud LLM inference (free tier) |
+| AI Runtime (Demo) | Ollama | Local LLM inference (air-gapped) |
+| AI Model | Llama 3 (8B Q4) | Local reasoning engine (demo mode) |
 
 ### 6.2 Deployment Environment
 
@@ -143,8 +144,9 @@ The system achieves a 360-degree program view through five core capabilities:
 |----------|-----------|---------|
 | Containerization | Docker | Service isolation |
 | Orchestration | Docker Compose | Multi-container deployment |
-| Minimum RAM | 16 GB | Ollama + Neo4j requirements |
-| Recommended GPU | NVIDIA RTX 3060+ | Accelerated LLM inference |
+| Minimum RAM | 16 GB DDR5 | ~7 GB (dev) / ~12 GB (demo) |
+| GPU | NVIDIA RTX 3050 6 GB | Accelerated LLM inference (demo mode) |
+| Machine | Lenovo LOQ i5-13450HX | Actual development hardware |
 
 ---
 
@@ -155,7 +157,7 @@ The system achieves a 360-degree program view through five core capabilities:
 | Query Response Time | < 5 seconds | Automated load testing |
 | Risk Detection Latency | < 60 seconds | Time from event to alert |
 | Data Accuracy | Zero hallucination | Citation verification |
-| Offline Capability | 100% functional | Air-gapped demo test |
+| Offline Capability | 100% functional (demo mode) | Air-gapped demo test |
 | Blocker Identification | 95% detection rate | Chaos Engine validation |
 
 ---
@@ -164,7 +166,7 @@ The system achieves a 360-degree program view through five core capabilities:
 
 | Member | Role | Primary Responsibility |
 |--------|------|----------------------|
-| Member 1 | AI Lead | LangGraph workflow, Ollama integration |
+| Member 1 | AI Lead | LangGraph workflow, LLMProvider integration (Gemini + Ollama) |
 | Member 2 | Backend Lead | FastAPI Simulator, Database design |
 | Member 3 | Frontend Lead | Next.js Dashboard, Chat UI |
 | Member 4 | Data/QA Lead | Synthetic data generation, Testing |
@@ -190,3 +192,4 @@ The system achieves a 360-degree program view through five core capabilities:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 0.1.0 | 2026-02-05 | Team Athena | Initial draft with core sections |
+| 0.1.1 | 2026-02-20 | Team Athena | Updated for hybrid dual-mode LLM architecture: Gemini (dev) + Ollama (demo), actual hardware specs |

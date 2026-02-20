@@ -23,7 +23,7 @@
 2. Implement GraphRAG architecture (Neo4j + ChromaDB) for unified data synthesis
 3. Develop a High-Fidelity Enterprise Simulator ("Project Universe")
 4. Create human-in-the-loop approval workflows for risk communication
-5. Deploy a privacy-first solution using local LLMs (Ollama + Llama 3)
+5. Deploy a dual-mode LLM via `LLMProvider` abstraction (Gemini for dev, Ollama + Llama 3 for air-gapped demo)
 
 **Scope:**
 - Simulated enterprise data integration via webhooks
@@ -56,16 +56,19 @@
 | Languages | Python 3.11, TypeScript |
 | Frameworks | FastAPI, LangGraph, Next.js 14 |
 | Databases | SQLite, Neo4j CE, ChromaDB |
-| AI Runtime | Ollama, Llama 3 (8B) |
+| AI Runtime (Dev) | Google Gemini 1.5 Flash (free tier) |
+| AI Runtime (Demo) | Ollama, Llama 3 (8B Q4) |
 | DevOps | Docker, Docker Compose, Git |
 
 **Hardware (Deployment):**
 
-| Component | Requirement |
-|-----------|------------|
-| RAM | Minimum 16 GB |
-| Storage | 50 GB |
-| GPU | NVIDIA RTX 3060+ (recommended) |
+| Component | Specification |
+|-----------|---------------|
+| Machine | Lenovo LOQ (actual dev hardware) |
+| CPU | Intel Core i5-13450HX |
+| RAM | 16 GB DDR5 (~7 GB dev / ~12 GB demo) |
+| GPU | NVIDIA RTX 3050 6 GB VRAM |
+| Storage | 512 GB NVMe |
 
 ---
 
@@ -76,7 +79,7 @@
 | Query Response Time | < 5 seconds |
 | Risk Detection Latency | < 60 seconds |
 | Data Accuracy | Zero hallucination (citation-based) |
-| Offline Capability | 100% functional |
+| Offline Capability | 100% functional (demo mode) |
 | Blocker Identification | 95% detection rate |
 | Audit Trail | Complete decision logging |
 
@@ -87,7 +90,7 @@
 - **Efficiency:** Frees 10+ hours/week per PM from manual data aggregation
 - **Proactive Safety:** Early risk identification prevents project failures
 - **Data-Driven Culture:** Real-time accurate information for all stakeholders
-- **Privacy-First AI:** Enterprise AI without cloud data leakage
+- **Privacy-First AI:** Dual-mode deployment — fully air-gapped for demo; minimal API footprint (Gemini free tier) for dev
 - **Open-Source Education:** Architecture patterns for AI agent development
 - **Knowledge Democratization:** Reduces information gap between teams and leadership
 

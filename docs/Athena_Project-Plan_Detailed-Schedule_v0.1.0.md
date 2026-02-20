@@ -1,93 +1,144 @@
 # Project Plan & Gantt Chart
-**Document ID:** Athena_Project-Plan_Detailed-Schedule_v0.1.0  
-**Project:** Athena: An Autonomous Multi-Agent Framework for Real-Time Program Management and Proactive Risk Mitigation  
-**Date:** 2026-02-19 | **Version:** 0.1.0
+**Document ID:** Athena_Project-Plan_Detailed-Schedule_v0.2.0  
+**Project:** Athena — Autonomous Multi-Agent Framework for Real-Time Program Management  
+**Date:** 2026-02-20 | **Version:** 0.2.0
 
 ---
 
-## Project Plan
+## 1. Project Overview
 
-### Overview
+**Goal:** Develop an autonomous multi-agent system that ingests enterprise project data, synthesizes knowledge via GraphRAG (Neo4j + ChromaDB), and proactively detects risks — powered by a dual-mode `LLMProvider` (Gemini for development, Ollama for air-gapped demos).
 
-Project Athena is a semester-long academic project spanning 15 weeks (14-Feb to 28-May 2026). The project follows an Agile-Incremental methodology, developing an autonomous multi-agent framework that integrates LangGraph orchestration, GraphRAG knowledge synthesis (Neo4j + ChromaDB), and local LLM inference (Ollama + Llama 3) for real-time program management and proactive risk mitigation. The plan maps to 17 university-prescribed milestone checkpoints.
-
-### Project Work Schedule
-
-| Sl. No | Task | Timeline | Key Deliverables |
-|--------|------|----------|-----------------|
-| 1 | Synopsis Submission and Zeroth Review | 14-Feb-2026 | Synopsis, Zeroth Review Presentation |
-| 2 | Project Plan (Gantt chart) & Literature Survey | 21-Feb-2026 | Project Plan, Literature Survey (18 papers) |
-| 3 | SRS & Requirement Analysis | 28-Feb-2026 | SRS Document, Use Case Analysis |
-| 4 | System Architecture and Design Specification | 07-Mar-2026 | HLD, C4 L2 Component Architecture |
-| 5 | First-Project Progress Evaluation | 07-Mar-2026 | Progress Presentation |
-| 6 | Proposal Review and Detailed Design Finalization | 14-Mar-2026 | DDD (Database Schema), API Contracts, Agent State Machine Spec |
-| 7 | Dev Environment Setup and Database Design | 20-Mar-2026 | Docker Compose Stack, SQLite/Neo4j/ChromaDB Setup, Ollama Config |
-| 8 | Core Module Development – Phase I | 28-Mar-2026 | Project Universe Simulator (Jira-Sim API, Chaos Engine, Webhooks) |
-| 9 | Mid-Semester Evaluation | 04-Apr-2026 | Mid-Semester Demo and Progress Report |
-| 10 | Core Module Dev – Phase II & System Integration | 04-Apr-2026 | Athena Core Agent (LangGraph, GraphRAG Pipeline), Next.js Dashboard |
-| 11 | Prototype Evaluation, Testing and Validation | 11-Apr-2026 | Unit Tests, Integration Tests, E2E Chaos Demos |
-| 12 | Result Analysis and Performance Evaluation | 18-Apr-2026 | Performance Benchmarks, Accuracy Metrics |
-| 13 | Technical Paper Writing & Submission | 25-Apr-2026 | IEEE-Format Technical Paper |
-| 14 | Project Demo & Best Project Nomination Eval | 02-May-2026 | Final Demo, Presentation Slides |
-| 15 | Final - Internal Evaluation | 09-May-2026 | Internal Evaluation Presentation |
-| 16 | Project Documentation and Report Preparation | 16-May-2026 | Complete Final Project Report |
-| 17 | Pradarshana & Project Report Hard Bound Submission | 28-May-2026 | Hard-Bound Report, Exhibition Demo |
-
-### Team Responsibilities
-
-| Member | Role | Responsibilities |
-|--------|------|-----------------|
-| Member 1 | AI Lead | LangGraph Agent, Ingestion Pipeline, Graph Syncer, Ollama Integration, Technical Paper |
-| Member 2 | Backend Lead | Jira-Sim API, Chaos Engine, Webhook Dispatcher, Database Schema, API Contracts |
-| Member 3 | Frontend Lead | Next.js Dashboard, Chat Interface, God Mode Console, UI/UX Wireframes, User Manual |
-| Member 4 | Data/QA Lead | Docker Setup, Synthetic Data, Unit/Integration Testing, Performance Benchmarks |
+**SDLC Model:** Agile-Incremental (15 weeks, 5 phases)  
+**Team Size:** 4 members  
+**Budget:** $0 (open-source + free-tier APIs)
 
 ---
 
-## Gantt Chart
+## 2. SDLC Phases
+
+### Phase 1 — Requirements & Research (Weeks 1–3)
+| Activity | Deliverable |
+|----------|-------------|
+| Stakeholder analysis & problem definition | Synopsis |
+| Literature survey (15 papers) | Literature Survey Report |
+| Functional & non-functional requirements | SRS Document |
+| Use case modeling & actor identification | Use Case Diagrams |
+| Feasibility analysis (technical, economic) | Feasibility Study |
+
+### Phase 2 — System Design (Weeks 3–5)
+| Activity | Deliverable |
+|----------|-------------|
+| C4 architecture (L1 Context, L2 Container) | HLD Document |
+| Database schema design (SQLite, Neo4j, ChromaDB) | DDD Document |
+| API contract specification | OpenAPI Specs |
+| Agent state machine design | Agent FSM Spec |
+| UI/UX wireframes | Wireframe Mockups |
+| Docker Compose topology | Deployment Spec |
+
+### Phase 3 — Implementation (Weeks 5–9)
+| Activity | Deliverable |
+|----------|-------------|
+| Project Universe simulator (Jira-Sim API) | Simulator Service |
+| Chaos Engine (5 fault types + webhooks) | Chaos Service |
+| `LLMProvider` abstraction (Gemini + Ollama) | LLM Module |
+| LangGraph agent workflow (4 agents) | Agent Core |
+| GraphRAG pipeline (ingestion → Neo4j/ChromaDB) | Knowledge Pipeline |
+| Next.js 14 dashboard + chat interface | Frontend App |
+| Synthetic dataset generation | Test Data |
+| Docker environment & CI setup | Dev Environment |
+
+### Phase 4 — Testing & Validation (Weeks 9–11)
+| Activity | Deliverable |
+|----------|-------------|
+| Unit testing (pytest, Jest) | Test Reports |
+| Integration testing (inter-service) | Integration Report |
+| E2E Chaos Engine scenarios | E2E Demo Scripts |
+| Performance benchmarking | Benchmark Report |
+| Acceptance criteria validation | Acceptance Report |
+
+**Acceptance Criteria:**
+
+| Metric | Target |
+|--------|--------|
+| Query response time | < 5 seconds |
+| Risk detection latency | < 60 seconds |
+| Blocker identification | ≥ 95% detection |
+| Offline capability | 100% (demo mode) |
+| Hallucination rate | 0% (citation-backed) |
+
+### Phase 5 — Documentation & Deployment (Weeks 11–15)
+| Activity | Deliverable |
+|----------|-------------|
+| IEEE-format technical paper | Research Paper |
+| Final project report | Project Report |
+| User manual | User Guide |
+| Demo preparation (dev + air-gapped) | Demo Package |
+| Hard-bound report & exhibition | Final Submission |
+
+---
+
+## 3. Risk Summary
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| LLM hallucination | HIGH | Citation-grounded responses + human-in-the-loop |
+| RAM pressure (16 GB, demo mode) | MED | `--profile demo` selective startup; dev mode skips Ollama |
+| Gemini API rate limits | LOW | 15 RPM free tier sufficient; fallback to Ollama |
+| Scope creep | MED | Phase gates + university milestone deadlines |
+
+---
+
+## 4. Gantt Chart
 
 ```
-PROJECT ATHENA — GANTT CHART (14-Feb to 28-May 2026)
-═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+PROJECT ATHENA — SDLC GANTT CHART (15 Weeks: 14-Feb to 28-May 2026)
+══════════════════════════════════════════════════════════════════════════════════════
 
-                                             FEBRUARY       MARCH              APRIL               MAY
-  #  TASK                                   14  21  28 | 07  14  20  28 | 04  11  18  25 | 02  09  16  28
-  ── ─────────────────────────────────────  ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ───
+                              FEB        MARCH           APRIL            MAY
+  PHASE / ACTIVITY           W1  W2  W3  W4  W5  W6  W7  W8  W9  W10 W11 W12 W13 W14 W15
+  ──────────────────────────  ──  ──  ──  ──  ──  ──  ──  ──  ──  ──  ──  ──  ──  ──  ──
 
-  RESEARCH & PLANNING
-  1  Synopsis & Zeroth Review               ██▲
-  2  Project Plan & Literature Survey        ██ ██▲
-  3  SRS & Requirement Analysis                  ██ ██▲
+  PHASE 1: REQUIREMENTS
+  Problem Definition          ██  ██
+  Literature Survey               ██  ██
+  SRS & Use Cases                 ██  ██
+  Feasibility Study           ██  ██  ██
+                                          ▲R1
 
-  SYSTEM DESIGN
-  4  System Architecture & Design (HLD)              ██ ██▲
-  5  First Progress Evaluation                           ▲E1
-  6  Detailed Design Finalization                    ██ ██ ██▲
-     └─ DB Schema, API Contracts, Agent SM           ██ ██ ██
+  PHASE 2: DESIGN
+  HLD (C4 Architecture)                  ██  ██
+  DDD (Database Schema)                      ██  ██
+  API Contracts & Agent FSM                  ██  ██
+  UI/UX Wireframes                           ██  ██
+                                                  ▲R2
 
-  DEVELOPMENT
-  7  Environment Setup & DB Configuration                    ██ ██▲
-     └─ Docker, SQLite, Neo4j, ChromaDB                      ██ ██
-  8  Core Dev – Phase I (Simulator)                              ██ ██▲
-     └─ Jira-Sim API, Chaos Engine, Webhooks                     ██ ██
-  9  Mid-Semester Evaluation                                         ▲E2
-  10 Core Dev – Phase II & Integration                           ██ ██▲
-     └─ LangGraph Agent, GraphRAG, Dashboard                     ██ ██
+  PHASE 3: IMPLEMENTATION
+  Project Universe Simulator                      ██  ██  ██
+  Chaos Engine & Webhooks                         ██  ██
+  LLMProvider (Gemini/Ollama)                     ██  ██
+  LangGraph Agent Workflow                            ██  ██  ██
+  GraphRAG Pipeline                                   ██  ██  ██
+  Next.js Dashboard                                   ██  ██  ██
+  Synthetic Data & Docker                         ██  ██
+                                                              ▲R3
 
-  TESTING & EVALUATION
-  11 System Testing & Validation                                     ██ ██▲
-     └─ Unit, Integration, E2E Chaos Tests                           ██ ██
-  12 Result Analysis & Performance Eval                                  ██ ██▲
+  PHASE 4: TESTING
+  Unit & Integration Tests                                    ██  ██
+  E2E Chaos Scenarios                                         ██  ██
+  Performance Benchmarks                                          ██
+  Acceptance Validation                                           ██
+                                                                  ▲R4
 
-  DOCUMENTATION & SUBMISSION
-  13 Technical Paper Writing                                                 ██ ██▲
-  14 Project Demo & Best Project Eval                                            ██ ██▲
-  15 Final Internal Evaluation                                                       ▲E3
-  16 Project Report Preparation                                                  ██ ██ ██▲
-  17 Pradarshana & Hard Bound Submission                                                 ██▲
-  ── ─────────────────────────────────────  ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ───
+  PHASE 5: DOCUMENTATION
+  Technical Paper (IEEE)                                              ██  ██
+  Final Report & User Manual                                          ██  ██  ██
+  Demo Preparation                                                        ██  ██
+  Hard Bound & Exhibition                                                     ██
+                                                                              ▲R5
+  ──────────────────────────  ──  ──  ──  ──  ──  ──  ──  ──  ──  ──  ──  ──  ──  ──  ──
 
-  LEGEND:  ██ = Active work period    ▲ = Submission deadline    ▲En = Evaluation checkpoint
+  LEGEND:  ██ = Active work    ▲Rn = Phase review/milestone
 ```
 
 ---
@@ -96,4 +147,5 @@ PROJECT ATHENA — GANTT CHART (14-Feb to 28-May 2026)
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 0.1.0 | 2026-02-19 | Team Athena | Initial project plan with Gantt chart aligned to academic schedule |
+| 0.1.0 | 2026-02-19 | Team Athena | Initial schedule-only document |
+| 0.2.0 | 2026-02-20 | Team Athena | Rewritten as standard SDLC project plan with 5 phases, risk summary, and phase-aligned Gantt chart |

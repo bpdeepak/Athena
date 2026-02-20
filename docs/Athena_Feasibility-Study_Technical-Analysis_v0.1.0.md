@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary
 
-This document analyzes the technical, economic, and operational feasibility of Project Athena. The project demonstrates MNC-grade system design using a zero-cost, privacy-first architecture achievable by a 4-member student team.
+This document analyzes the technical, economic, and operational feasibility of Project Athena. The project demonstrates MNC-grade system design using a zero-to-minimal cost, privacy-capable architecture with a dual-mode LLM (Google Gemini for dev, Ollama for demo), achievable by a 4-member student team.
 
 **Recommendation:** PROCEED with implementation.
 
@@ -20,7 +20,9 @@ This document analyzes the technical, economic, and operational feasibility of P
 | Component | Technology | Maturity | Risk Level |
 |-----------|------------|----------|------------|
 | Agent Framework | LangGraph | Production-ready | LOW |
-| Local LLM | Ollama + Llama 3 | Stable | LOW |
+| Local LLM (Demo) | Ollama + Llama 3 8B | Stable | LOW |
+| Cloud LLM (Dev) | Google Gemini 1.5 Flash | Production-ready (free tier) | LOW |
+| LLM Abstraction | LLMProvider (custom) | New (project-built) | LOW |
 | Graph Database | Neo4j CE | Enterprise-proven | LOW |
 | Vector Store | ChromaDB | Mature | LOW |
 | API Framework | FastAPI | Production-ready | LOW |
@@ -56,11 +58,14 @@ This document analyzes the technical, economic, and operational feasibility of P
 |                            +---------------+       +---------------+  |
 |                                   |                                   |
 |                            +---------------+                          |
-|                            |               |                          |
-|                            |   Ollama      |                          |
-|                            |   (Llama 3)   |                          |
-|                            |               |                          |
-|                            +---------------+                          |
+|                            |  LLMProvider  |                          |
+|                            |  (Abstraction)|                          |
+|                            +-------+-------+                          |
+|                              /           \                            |
+|                    +--------+--+     +---+----------+                 |
+|                    | Gemini    |     | Ollama       |                 |
+|                    | (Dev Mode)|     | (Demo Mode)  |                 |
+|                    +-----------+     +--------------+                 |
 |                                                                       |
 +-----------------------------------------------------------------------+
 ```
@@ -72,13 +77,14 @@ This document analyzes the technical, economic, and operational feasibility of P
 | LLM Hallucination | HIGH | Strict citation requirement; graph-grounded responses |
 | Context Window Limits | MEDIUM | GraphRAG reduces context; summarization agents |
 | Real-time Sync | MEDIUM | Event-driven architecture with webhooks |
-| Hardware Requirements | LOW | 8B model runs on consumer GPU; CPU fallback available |
+| Hardware Requirements | LOW | Dev mode: no GPU required (Gemini API); Demo mode: 8B model runs on consumer GPU; CPU fallback available |
 
 ### 2.4 Proof of Concept Validation
 
 | Capability | Validation Method | Status |
 |------------|-------------------|--------|
-| LangGraph + Ollama | Local prototype | VERIFIED |
+| LangGraph + LLMProvider | Local + cloud prototype | VERIFIED |
+| Gemini API (free tier) | API key + prompt test | VERIFIED |
 | Neo4j Cypher Queries | Sample data test | VERIFIED |
 | Webhook Processing | httpx + FastAPI | VERIFIED |
 | Docker Compose Stack | Multi-container test | VERIFIED |
@@ -91,7 +97,8 @@ This document analyzes the technical, economic, and operational feasibility of P
 
 | Category | Item | Cost | Notes |
 |----------|------|------|-------|
-| **LLM Inference** | Ollama (Llama 3) | $0 | Open-source, local execution |
+| **LLM Inference (Dev)** | Google Gemini 1.5 Flash | $0 | Free tier (15 RPM / 1M tokens/day) |
+| **LLM Inference (Demo)** | Ollama (Llama 3 8B Q4) | $0 | Open-source, local execution |
 | **Database** | Neo4j Community | $0 | Free tier sufficient |
 | **Vector Store** | ChromaDB | $0 | Open-source |
 | **Hosting** | Local Docker | $0 | Demo on localhost |
@@ -103,7 +110,7 @@ This document analyzes the technical, economic, and operational feasibility of P
 ```
 COST COMPARISON (Monthly Operational)
 
-Option A: Cloud API Approach
+Option A: Paid Cloud API Approach (Rejected)
 +----------------------------------+
 | OpenAI API         | $50-200/mo |
 | Azure DevOps API   | $6/user/mo |
@@ -112,9 +119,10 @@ Option A: Cloud API Approach
 | TOTAL              | $106-306/mo|
 +----------------------------------+
 
-Option B: Local Stack (Selected)             
+Option B: Hybrid Free Stack (Selected)             
 +----------------------------------+
-| Ollama (Local)     | $0         |
+| Gemini Free Tier   | $0         |
+| Ollama (Demo Mode) | $0         |
 | Simulated Data     | $0         |
 | Docker (Local)     | $0         |
 +----------------------------------+
@@ -126,14 +134,15 @@ SAVINGS: 100%
 
 ### 3.3 Hardware Investment
 
-| Requirement | Minimum | Recommended |
-|-------------|---------|-------------|
-| RAM | 16 GB | 32 GB |
-| Storage | 50 GB | 100 GB |
-| GPU | None (CPU fallback) | NVIDIA RTX 3060+ |
-| Network | Localhost only | Localhost only |
+| Requirement | Minimum (Dev Mode) | Minimum (Demo Mode) | Actual Dev Machine |
+|-------------|-------------------|--------------------|-----------|
+| RAM | 8 GB | 16 GB | 16 GB DDR5 |
+| Storage | 30 GB | 50 GB | 512 GB NVMe |
+| GPU | None (Gemini API) | RTX 3050+ (6 GB VRAM) | NVIDIA RTX 3050 6 GB |
+| CPU | Any modern | i5-13th gen+ | Intel i5-13450HX |
+| Network | Internet (Gemini API) | Localhost only (air-gapped) | Both |
 
-**Student Hardware Assessment:** Standard development laptops meet minimum requirements.
+**Student Hardware Assessment:** The actual development machine (Lenovo LOQ, i5-13450HX, 16GB DDR5, RTX 3050 6GB) meets all requirements. Dev mode requires only ~7 GB RAM (no local LLM); demo mode requires ~12 GB RAM.
 
 ---
 
@@ -172,7 +181,8 @@ MILESTONES:
 
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|------------|
-| LLM latency on CPU | MEDIUM | LOW | Pre-generate common responses |
+| LLM latency on CPU | MEDIUM | LOW | Pre-generate common responses; use Gemini API in dev mode |
+| Gemini API rate limits | LOW | LOW | Free tier: 15 RPM sufficient for dev; no API in demo mode |
 | Neo4j learning curve | LOW | MEDIUM | Use py2neo abstraction |
 | Team member availability | LOW | HIGH | Cross-training on modules |
 | Scope creep | MEDIUM | MEDIUM | Strict feature prioritization |
@@ -186,6 +196,7 @@ MILESTONES:
 | Component | License | Commercial Use | Compliant |
 |-----------|---------|----------------|-----------|
 | Llama 3 | Llama 3 License | Yes (< 700M MAU) | YES |
+| Google Gemini API | Google ToS (free tier) | Yes | YES |
 | Neo4j CE | GPL v3 | Yes | YES |
 | LangGraph | MIT | Yes | YES |
 | ChromaDB | Apache 2.0 | Yes | YES |
@@ -197,7 +208,8 @@ MILESTONES:
 | Concern | Approach |
 |---------|----------|
 | No real user data | Synthetic data only |
-| No external API calls | Air-gapped architecture |
+| No external API calls (demo mode) | Air-gapped architecture via Ollama |
+| Minimal external API calls (dev mode) | Only LLM prompts to Gemini API; no project data in prompts |
 | Audit trail | All actions logged locally |
 
 ---
@@ -228,3 +240,4 @@ MILESTONES:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 0.1.0 | 2026-02-05 | Team Athena | Initial feasibility assessment |
+| 0.1.1 | 2026-02-20 | Team Athena | Updated for hybrid dual-mode LLM architecture: Gemini (dev) + Ollama (demo), actual hardware specs, expanded cost/risk/licensing analysis |

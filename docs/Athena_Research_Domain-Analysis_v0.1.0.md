@@ -174,8 +174,8 @@ LIMITATIONS:                                     |
 |-----------|------------|---------|
 | Vector Store | ChromaDB | Semantic search on unstructured text |
 | Knowledge Graph | Neo4j | Structured relationships between entities |
-| LLM | Llama 3 (via Ollama) | Reasoning and response generation |
-| Embeddings | Llama 3 | Text vectorization |
+| LLM | LLMProvider (Gemini or Ollama) | Reasoning and response generation |
+| Embeddings | LLMProvider (Gemini or Llama 3) | Text vectorization |
 
 ### 4.3 Knowledge Graph Schema
 
@@ -210,43 +210,85 @@ ENTITY RELATIONSHIP MODEL
 
 ---
 
-## 5. Local LLM Analysis
+## 5. LLM Strategy Analysis
 
-### 5.1 Model Comparison
+### 5.1 Dual-Mode Rationale
+
+Running a local LLM (Ollama + Llama 3 8B) alongside Neo4j, ChromaDB, and all Docker services simultaneously requires ~12-14 GB RAM. On the development hardware (Lenovo LOQ, 16 GB DDR5 RAM), this leaves zero headroom for IDEs, browsers, and debugging tools. The dual-mode approach solves this:
+
+| Mode | LLM Backend | RAM Footprint | Network | Use Case |
+|------|------------|---------------|---------|----------|
+| **Development** | Google Gemini 1.5 Flash (free tier) | ~7 GB | Internet (Gemini API) | Day-to-day coding, testing, iteration |
+| **Air-Gapped Demo** | Ollama + Llama 3 8B Q4 | ~12 GB | Localhost only | Final demos, privacy-sensitive deployments |
+
+A pluggable `LLMProvider` abstraction (Python abstract class) with `GeminiProvider` and `OllamaProvider` implementations ensures agent logic is completely decoupled from any specific LLM backend. Switching modes requires only changing `LLM_BACKEND=gemini|ollama` in the `.env` file.
+
+### 5.2 Model Comparison
 
 | Model | Parameters | VRAM Required | Quality | Speed |
 |-------|------------|---------------|---------|-------|
-| Llama 3 8B | 8B | 8 GB | Good | Fast |
+| **Gemini 1.5 Flash** | N/A (cloud) | 0 GB (API) | Excellent | Fast |
+| **Llama 3 8B Q4** | 8B | 6 GB | Good | Fast |
 | Llama 3 70B | 70B | 48 GB | Excellent | Slow |
 | Mistral 7B | 7B | 8 GB | Good | Fast |
 | Qwen 2.5 7B | 7B | 8 GB | Good | Fast |
 
-### 5.2 Recommendation
+### 5.3 Recommendation
 
-**Selected: Llama 3 8B via Ollama**
+**Selected: Dual-mode via LLMProvider abstraction**
 
-| Criterion | Assessment |
-|-----------|------------|
-| Hardware Fit | Runs on 16GB laptop |
-| Reasoning Quality | Sufficient for PM queries |
-| Tool Use | Supports function calling |
-| Local Execution | Zero API cost |
+| Criterion | Dev Mode (Gemini) | Demo Mode (Ollama + Llama 3 8B Q4) |
+|-----------|-------------------|---------------------|
+| Hardware Fit | No GPU required | Runs on RTX 3050 6GB |
+| Reasoning Quality | Excellent | Sufficient for PM queries |
+| Tool Use | Supports function calling | Supports function calling |
+| Cost | $0 (free tier) | $0 (local) |
+| Privacy | Prompts sent to Google | Fully air-gapped |
 
 ---
 
 ## 6. Security and Privacy Model
 
-### 6.1 Air-Gapped Architecture
+### 6.1 Dual-Mode Deployment Architecture
 
 ```
-DEPLOYMENT BOUNDARY
+DEV MODE DEPLOYMENT BOUNDARY
+
++================================================================+
+||                    LOCAL DOCKER NETWORK                       ||
+||                                                               ||
+||  +---------------+  +---------------+                         ||
+||  | Neo4j         |  | ChromaDB      |                         ||
+||  | (Graph)       |  | (Vectors)     |                         ||
+||  +---------------+  +---------------+                         ||
+||         ^                   ^                                  ||
+||         |                   |                                  ||
+||         +-------------------+                                  ||
+||                    |                                           ||
+||           +--------+--------+                                  ||
+||           |   Athena Core   |                                  ||
+||           |   (FastAPI)     |                                  ||
+||           +--------+--------+                                  ||
+||                    |                                           ||
++====================|============================================+
+                     | LLMProvider → GeminiProvider
+                     | (HTTPS to Gemini API)
+                     v
+              +-------------+
+              | Google AI   |
+              | Studio API  |
+              | (Free Tier) |
+              +-------------+
+
+
+DEMO MODE (AIR-GAPPED) DEPLOYMENT BOUNDARY
 
 +================================================================+
 ||                    LOCAL DOCKER NETWORK                       ||
 ||                                                               ||
 ||  +---------------+  +---------------+  +---------------+      ||
 ||  | Neo4j         |  | ChromaDB      |  | Ollama        |      ||
-||  | (Graph)       |  | (Vectors)     |  | (LLM)         |      ||
+||  | (Graph)       |  | (Vectors)     |  | (Llama 3 8B)  |      ||
 ||  +---------------+  +---------------+  +---------------+      ||
 ||         ^                   ^                  ^               ||
 ||         |                   |                  |               ||
@@ -274,8 +316,9 @@ DEPLOYMENT BOUNDARY
 
 | Guarantee | Implementation |
 |-----------|----------------|
-| Data Sovereignty | All data stored locally |
-| No API Leakage | Ollama for inference |
+| Data Sovereignty | All project data stored locally (both modes) |
+| No API Leakage (demo mode) | Ollama for fully air-gapped inference |
+| Minimal API footprint (dev mode) | Only LLM prompts sent to Gemini API; no project data in prompts |
 | Audit Trail | Complete action logging |
 | Synthetic Data | No real PII |
 
@@ -286,7 +329,7 @@ DEPLOYMENT BOUNDARY
 The research concludes that:
 1. **LangGraph** provides the best control for program management workflows
 2. **GraphRAG** enables relationship-aware reasoning critical for PMO use cases
-3. **Local LLMs** eliminate cost barriers while ensuring data privacy
+3. **Dual-Mode LLM** eliminates cost barriers (free-tier Gemini + local Ollama) while offering flexible deployment: cloud for agility, local for privacy
 4. **High-Fidelity Simulation** demonstrates enterprise capabilities without corporate access
 
 ---
@@ -296,3 +339,4 @@ The research concludes that:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 0.1.0 | 2026-02-05 | Team Athena | Initial domain research |
+| 0.1.1 | 2026-02-20 | Team Athena | Updated for hybrid dual-mode LLM architecture: LLMProvider abstraction, Gemini (dev) + Ollama (demo), dual-mode deployment diagrams |

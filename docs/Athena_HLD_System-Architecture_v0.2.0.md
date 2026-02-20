@@ -23,7 +23,8 @@ These two systems communicate exclusively via HTTP webhooks and REST APIs, mirro
 
 | Principle | Description | Implementation |
 |-----------|-------------|---------------|
-| Air-Gapped Deployment | Zero external network dependencies | All services run locally via Docker Compose |
+| Air-Gapped Capable | Supports fully offline deployment via Ollama | All services CAN run locally via Docker Compose |
+| Dual-Mode LLM | Pluggable LLM backend for dev (cloud) and demo (local) | `LLMProvider` abstraction with Gemini and Ollama implementations |
 | Event-Driven Processing | React to state changes, not polling | Webhook-driven ingestion pipeline |
 | Dual Knowledge Store | Structured + unstructured knowledge | Neo4j (graph) + ChromaDB (vector) |
 | Human-in-the-Loop | No autonomous external action without approval | Human Gate node in LangGraph |
@@ -102,19 +103,19 @@ These two systems communicate exclusively via HTTP webhooks and REST APIs, mirro
 |  |          DATA LAYER             |     |       INFERENCE LAYER           |  |
 |  +---------------------------------+     +---------------------------------+  |
 |  |                                 |     |                                 |  |
-|  |  ┌─────────┐  ┌─────────┐      |     |  ┌──────────────┐              |  |
-|  |  │ SQLite  │  │  Neo4j  │      |     |  │   Ollama     │              |  |
-|  |  │ (Mock   │  │ (Graph  │      |     |  │  (Llama 3    │              |  |
-|  |  │ Jira DB)│  │  Store) │      |     |  │   8B model)  │              |  |
-|  |  │         │  │Port:7474│      |     |  │  Port:11434  │              |  |
-|  |  └─────────┘  │    7687 │      |     |  └──────────────┘              |  |
-|  |               └─────────┘      |     |                                 |  |
-|  |  ┌─────────┐                   |     |                                 |  |
-|  |  │ChromaDB │                   |     |                                 |  |
-|  |  │(Vector  │                   |     |                                 |  |
-|  |  │ Store)  │                   |     |                                 |  |
-|  |  │Port:8002│                   |     |                                 |  |
-|  |  └─────────┘                   |     |                                 |  |
+|  |  ┌─────────┐  ┌─────────┐      |     |  ┌──────────────────────────┐   |  |
+|  |  │ SQLite  │  │  Neo4j  │      |     |  │     LLMProvider          │   |  |
+|  |  │ (Mock   │  │ (Graph  │      |     |  │     (Abstraction)        │   |  |
+|  |  │ Jira DB)│  │  Store) │      |     |  ├──────────────────────────┤   |  |
+|  |  │         │  │Port:7474│      |     |  │ Dev:  GeminiProvider     │   |  |
+|  |  └─────────┘  │    7687 │      |     |  │       (Gemini 1.5 Flash  │   |  |
+|  |               └─────────┘      |     |  │        via Google AI     │   |  |
+|  |  ┌─────────┐                   |     |  │        Studio free tier) │   |  |
+|  |  │ChromaDB │                   |     |  ├──────────────────────────┤   |  |
+|  |  │(Vector  │                   |     |  │ Demo: OllamaProvider     │   |  |
+|  |  │ Store)  │                   |     |  │       (Ollama + Llama 3  │   |  |
+|  |  │Port:8002│                   |     |  │        8B Q4, Port:11434)│   |  |
+|  |  └─────────┘                   |     |  └──────────────────────────┘   |  |
 |  +---------------------------------+     +---------------------------------+  |
 |                                                                               |
 |  +------------------------------------------------------------------------+  |
@@ -585,14 +586,13 @@ class AgentState(TypedDict):
 |  sim-api           athena/sim:latest  8001     sim-db         ./data/   |
 |  sim-chaos         athena/chaos:latest  —      sim-api        —        |
 |  athena-core       athena/core:latest 8000     graph-db,      ./logs/  |
-|                                                vector-db,              |
-|                                                ollama                  |
+|                                                vector-db               |
 |  graph-db          neo4j:5-community  7474,    —              neo4j_   |
 |                                       7687                   data/     |
 |  vector-db         chromadb/chroma    8002     —              chroma_  |
 |                                                              data/     |
 |  ollama            ollama/ollama      11434    —              ollama_  |
-|                                                              models/   |
+|  (DEMO MODE ONLY)                                            models/   |
 |  dashboard         athena/ui:latest   3000     athena-core    —        |
 |                                                                         |
 +=========================================================================+
@@ -600,6 +600,11 @@ class AgentState(TypedDict):
 NETWORK: athena-network (bridge)
   All services communicate via Docker internal DNS
   Only exposed ports: 3000 (Dashboard), 8001 (Simulator, optional)
+
+DEPLOYMENT MODES:
+  Dev mode:   docker compose --profile dev up -d       (no Ollama)
+  Demo mode:  docker compose --profile demo up -d      (includes Ollama)
+  LLM_BACKEND env var controls which LLMProvider is active
 ```
 
 ### 5.2 Service Dependency Graph
@@ -618,11 +623,16 @@ NETWORK: athena-network (bridge)
                     └──┬─┬─┬──┘
            ┌───────────┘ │ └───────────┐
            ▼             ▼             ▼
-     ┌──────────┐  ┌──────────┐  ┌──────────┐
-     │ graph-db │  │vector-db │  │  ollama  │
-     │ (Neo4j)  │  │(ChromaDB)│  │(Llama 3) │
-     │ :7474    │  │ :8002    │  │ :11434   │
-     └──────────┘  └──────────┘  └──────────┘
+      ┌──────────┐  ┌──────────┐  ┌──────────────┐
+      │ graph-db │  │vector-db │  │    ollama    │
+      │ (Neo4j)  │  │(ChromaDB)│  │  (Llama 3)   │
+      │ :7474    │  │ :8002    │  │  :11434      │
+      └──────────┘  └──────────┘  │ DEMO MODE    │
+                                  │ ONLY (opt.)  │
+                                  └──────────────┘
+
+  Dev Mode:  athena-core → Gemini API (external, free tier)
+  Demo Mode: athena-core → ollama container (local, air-gapped)
 
      ┌──────────┐
      │sim-chaos │──────────┐
@@ -660,13 +670,15 @@ NETWORK: athena-network (bridge)
 ### 6.2 Inter-Service Communication
 
 ```
-  Dashboard ──HTTP──> Athena Core ──HTTP──> Ollama (LLM)
-                          │
-                          ├──bolt://──> Neo4j (Cypher queries)
-                          │
-                          ├──HTTP──> ChromaDB (Vector search)
-                          │
-                          └──HTTP──> Simulator API (optional, for God Mode)
+  Dashboard ──HTTP──> Athena Core ──> LLMProvider:
+                           │              ├── Dev:  HTTPS ──> Gemini API (external)
+                           │              └── Demo: HTTP  ──> Ollama (internal)
+                           │
+                           ├──bolt://──> Neo4j (Cypher queries)
+                           │
+                           ├──HTTP──> ChromaDB (Vector search)
+                           │
+                           └──HTTP──> Simulator API (optional, for God Mode)
 
   Simulator ──HTTP POST webhook──> Athena Core
 ```
@@ -679,12 +691,13 @@ NETWORK: athena-network (bridge)
 
 | Threat | Severity | Mitigation |
 |--------|----------|-----------|
-| Data leakage to external APIs | HIGH | Air-gapped: no external network calls; Ollama runs locally |
+| Data leakage to external APIs | HIGH | Demo mode: fully air-gapped (Ollama). Dev mode: only LLM prompts sent to Gemini API; no project data in prompts |
 | LLM hallucination in alerts | HIGH | Citation enforcement: all claims must reference Neo4j/ChromaDB data |
 | Unauthorized chaos injection | MEDIUM | God Mode behind authentication; chaos API internal-only |
 | ATL tampering | MEDIUM | Append-only log design; no UPDATE/DELETE on ATL table |
 | Container escape | LOW | Minimal container privileges; no root in containers |
 | Prompt injection via ticket text | MEDIUM | Input sanitization; system prompts with strict boundary instructions |
+| API key exposure | MEDIUM | Gemini API key in `.env` only (gitignored); never committed to VCS |
 
 ### 7.2 Privacy Model
 
@@ -692,8 +705,7 @@ NETWORK: athena-network (bridge)
 DATA FLOW PRIVACY ANALYSIS
 ════════════════════════════
 
-  All data stays within Docker network boundary:
-
+  DEV MODE (Cloud LLM — Gemini 1.5 Flash):
   ┌─────────────────────────────────────────────┐
   │           DOCKER HOST (localhost)            │
   │                                             │
@@ -701,7 +713,33 @@ DATA FLOW PRIVACY ANALYSIS
   │       │                         │           │
   │       │              ChromaDB <─┘           │
   │       │                 │                   │
-  │       └──> Ollama (LOCAL LLM) ──> Response  │
+  │       └──> LLMProvider (GeminiProvider)     │
+  │                │                            │
+  │                │ HTTPS (prompts only)        │
+  │                └──────────────┐              │
+  │                               │              │
+  │  ✓ Project data stays local   │              │
+  │  ✓ Only LLM prompts external  │              │
+  │  ╳ NO telemetry or analytics  │              │
+  └───────────────────────────────│──────────────┘
+                                  ▼
+                     ┌───────────────────────┐
+                     │ Google AI Studio API  │
+                     │ (Gemini 1.5 Flash)    │
+                     │ Free tier: 15 RPM     │
+                     └───────────────────────┘
+
+  DEMO MODE (Local LLM — Ollama + Llama 3 8B Q4):
+  ┌─────────────────────────────────────────────┐
+  │           DOCKER HOST (localhost)            │
+  │                                             │
+  │  Synthetic Data ──> SQLite ──> Neo4j        │
+  │       │                         │           │
+  │       │              ChromaDB <─┘           │
+  │       │                 │                   │
+  │       └──> LLMProvider (OllamaProvider)     │
+  │                │                            │
+  │                └──> Ollama (LOCAL) ──> Resp  │
   │                                             │
   │  ╳ NO external API calls                    │
   │  ╳ NO telemetry or analytics                │
@@ -724,8 +762,11 @@ DATA FLOW PRIVACY ANALYSIS
 | Agent | Orchestrator | LangGraph | 0.1+ | MIT |
 | Agent | Graph Client | py2neo | 2021.2+ | Apache 2.0 |
 | Agent | Vector Client | chromadb | 0.4+ | Apache 2.0 |
-| Inference | LLM Server | Ollama | 0.1+ | MIT |
-| Inference | Model | Llama 3 8B | 3.0 | Meta Community |
+| Agent | LLM Abstraction | LLMProvider (custom) | — | Project code |
+| Inference (Dev) | LLM API | Google Gemini 1.5 Flash | latest | Google ToS (free tier) |
+| Inference (Dev) | Python SDK | google-generativeai | 0.5+ | Apache 2.0 |
+| Inference (Demo) | LLM Server | Ollama | 0.1+ | MIT |
+| Inference (Demo) | Model | Llama 3 8B Q4 | 3.0 | Meta Community |
 | Data | Graph DB | Neo4j CE | 5.x | GPL v3 |
 | Data | Vector DB | ChromaDB | 0.4+ | Apache 2.0 |
 | Frontend | Framework | Next.js | 14.x | MIT |
@@ -741,3 +782,4 @@ DATA FLOW PRIVACY ANALYSIS
 |---------|------|--------|---------|
 | 0.1.0 | 2026-02-05 | Team Athena | Initial architecture definition |
 | 0.2.0 | 2026-02-19 | Team Athena | Comprehensive architecture with C4 diagrams, API contracts, sequence diagrams, agent state machine, deployment topology, security model, technology stack |
+| 0.2.1 | 2026-02-20 | Team Athena | Updated for hybrid dual-mode LLM architecture: LLMProvider abstraction, Gemini (dev) + Ollama (demo), deployment profiles, updated threat/privacy model, tech stack expanded |

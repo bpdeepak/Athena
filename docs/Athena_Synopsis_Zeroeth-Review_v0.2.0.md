@@ -84,17 +84,29 @@ This is fundamentally different from "using a pretrained model":
 - State checkpointing logic so the system can resume from failures
 
 **How this differs from "just using a pretrained model":**
-- The LLM (Llama 3) is only ONE component — it provides language understanding and generation
+- The LLM is only ONE component — it provides language understanding and generation
 - The **intelligence** comes from our custom-designed agent workflow, tool integrations, and knowledge graph queries
 - The LLM never answers from its training data alone — it is **forced** to cite specific ticket IDs from the Knowledge Graph
 - If the LLM cannot find relevant data in our knowledge stores, it says "I don't have this information" instead of hallucinating
 
-### Objective 4: Deploy as a Privacy-First, Fully Offline System
+### Objective 4: Deploy with a Dual-Mode LLM Architecture (Cloud + Local)
 
-**What:** The entire system runs on a single laptop with no internet connection required. We achieve this by:
-- Using **Ollama** (open-source LLM server) to run Llama 3 8B **locally** instead of calling OpenAI/Claude APIs
-- Running Neo4j, ChromaDB, and all services inside **Docker containers** orchestrated via Docker Compose
-- No data ever leaves the local machine — demonstrating **air-gapped deployment** suitable for defense, healthcare, or finance sectors
+**What:** We design a **pluggable LLM architecture** using an `LLMProvider` abstraction layer that supports two deployment modes:
+
+| Mode | LLM Backend | Use Case | Network Required |
+|------|------------|----------|------------------|
+| **Development Mode** | Google Gemini 1.5 Flash (free tier API) | Day-to-day development, testing, and iteration | Yes (API calls to Google AI Studio) |
+| **Air-Gapped Mode** | Ollama + Llama 3 8B (local, quantized Q4) | Final demo, privacy-sensitive deployments, offline operation | No (fully local) |
+
+**Why dual-mode:** Running a local LLM (Ollama + Llama 3 8B) alongside Neo4j, ChromaDB, and all other Docker services simultaneously requires ~14-16 GB RAM. On the development hardware (16 GB RAM), this leaves zero headroom for development tools (IDE, browser, debugging). The dual-mode approach allows comfortable development with a cloud API while preserving the air-gapped capability for demonstration and enterprise deployment.
+
+**What we code ourselves:**
+- An `LLMProvider` interface (Python abstract class) with two implementations: `OllamaProvider` and `GeminiProvider`
+- A configuration parameter `LLM_BACKEND=ollama|gemini` in the `.env` file that switches between modes
+- Prompt templates compatible with both backends (structured to work with both Llama 3 and Gemini instruction formats)
+- All other components (LangGraph agent, Neo4j, ChromaDB, ingestion pipeline) remain **identical** regardless of which LLM backend is active
+
+**Architectural significance:** This abstraction demonstrates production-grade design — the system is not tightly coupled to any single LLM provider. In a real enterprise, the same `LLMProvider` interface could be extended to support Azure OpenAI, AWS Bedrock, or any future model without modifying the agent logic.
 
 ### Objective 5: Build a Dashboard for Real-Time Visualization and Interaction
 
@@ -239,8 +251,13 @@ Step 7 (2:02 PM) — LOGGED IN ATL
                     │           │              │
                     │           ▼              │
                     │  ┌───────────────────┐   │
-                    │  │  Ollama (Llama 3) │   │
-                    │  │  LOCAL LLM only   │   │
+                    │  │  LLMProvider      │   │
+                    │  │  (Abstraction)    │   │
+                    │  ├───────────────────┤   │
+                    │  │ Mode A: Gemini    │   │
+                    │  │  (Cloud, Dev)     │   │
+                    │  │ Mode B: Ollama    │   │
+                    │  │  (Local, Demo)    │   │
                     │  └───────────────────┘   │
                     └──────────────────────────┘
                                   │
@@ -262,7 +279,7 @@ Step 7 (2:02 PM) — LOGGED IN ATL
                     └──────────────────────────┘
 ```
 
-**Key Point: EVERYTHING in the diagram above is built by us.** The only external components are open-source tools (Neo4j, ChromaDB, Ollama, Llama 3 model) that we configure, integrate, and orchestrate.
+**Key Point: EVERYTHING in the diagram above is built by us.** The only external components are open-source tools (Neo4j, ChromaDB, Ollama, Llama 3 model) and optional cloud APIs (Google Gemini free tier) that we configure, integrate, and orchestrate through our custom `LLMProvider` abstraction.
 
 ---
 
@@ -278,18 +295,21 @@ Step 7 (2:02 PM) — LOGGED IN ATL
 | Agent | LangGraph State Machine | **Agent workflow, tools, routing logic** | LangGraph library |
 | Knowledge Graph | Neo4j + py2neo | **Schema design, Cypher queries, sync logic** | Neo4j database |
 | Vector Store | ChromaDB | **Collection design, indexing pipeline** | ChromaDB engine |
-| LLM | Ollama + Llama 3 8B | **Prompt engineering, tool-calling config** | Model weights |
+| LLM (Dev Mode) | Google Gemini 1.5 Flash | **LLMProvider abstraction, prompt engineering** | Gemini API (free tier) |
+| LLM (Demo Mode) | Ollama + Llama 3 8B | **LLMProvider abstraction, prompt engineering, Q4 quant config** | Model weights |
 | Frontend | Next.js 14 | **Dashboard, Chat UI, God Mode Console** | React/Next.js framework |
 | DevOps | Docker Compose | **Multi-service orchestration config** | Docker runtime |
 
 ### Hardware Requirements
 
-| Component | Minimum | Recommended |
-|-----------|---------|-------------|
-| RAM | 16 GB | 32 GB |
-| Storage | 50 GB | 100 GB |
-| GPU | None (CPU fallback) | NVIDIA RTX 3060+ |
-| Network | Localhost only (air-gapped) | Localhost only |
+**Development Machine:** Lenovo LOQ, Intel i5-13450HX (12C/16T), 16 GB DDR5 RAM, NVIDIA RTX 3050 6GB VRAM
+
+| Component | Dev Mode (Cloud LLM) | Demo Mode (Local LLM) |
+|-----------|---------------------|----------------------|
+| RAM Usage | ~7 GB (services only) | ~12-14 GB (services + Ollama) |
+| GPU Usage | Not required | RTX 3050 6GB (Q4 inference) |
+| Storage | 20 GB | 25 GB (+ Llama 3 model) |
+| Network | Internet (Gemini API) | Localhost only (air-gapped) |
 
 ---
 
@@ -300,7 +320,7 @@ Step 7 (2:02 PM) — LOGGED IN ATL
 | 1 | System responds to natural language queries about program status with cited, accurate answers | Automated test suite with 50+ predefined queries | < 5 second response time (P95) |
 | 2 | System autonomously detects when a ticket becomes blocked and generates an alert | Chaos Engine injects 20 blocker events; measure detection rate | 95% detection, < 60 second latency |
 | 3 | All responses cite specific ticket IDs from the Knowledge Graph (no hallucination) | Manual audit of 100 responses against ground truth in Neo4j | 0% hallucination rate |
-| 4 | Entire system runs offline on a single laptop | Disconnect from internet; run full demo | 100% offline functionality |
+| 4 | System supports both cloud and air-gapped deployment modes | Switch `LLM_BACKEND=ollama`, disconnect internet, run full demo | 100% offline in air-gapped mode; seamless cloud mode for development |
 | 5 | Complete audit trail of every agent decision with timestamp and reasoning | Inspect ATL table after 1-hour demo run | Every action logged with rationale |
 | 6 | Dashboard displays real-time program health with RAG indicators | Live demo with chaos injection | Updates within 30 seconds of event |
 
@@ -311,7 +331,7 @@ Step 7 (2:02 PM) — LOGGED IN ATL
 1. **Efficiency Enhancement:** Frees program managers from 10+ hours/week of manual data aggregation, allowing focus on strategic problem-solving
 2. **Proactive Risk Management:** Enables early identification of project risks before they escalate to critical issues, potentially saving organizations from costly project failures
 3. **Data-Driven Culture:** Provides accurate, real-time information accessible to all stakeholders, reducing information asymmetry between technical teams and leadership
-4. **Privacy-First AI:** Demonstrates that enterprise-grade AI can be deployed completely on-premise without sending any data to cloud APIs — critical for defense, healthcare, and financial sectors
+4. **Flexible Deployment AI:** Demonstrates a dual-mode architecture where enterprises can choose between cloud APIs for convenience or fully on-premise deployment for privacy-sensitive environments (defense, healthcare, finance) — achieved through a pluggable `LLMProvider` abstraction
 5. **Open-Source Contribution:** The architecture patterns, simulator design, and agent workflows serve as educational resources for the AI agent development community
 6. **Reproducible Research:** The Project Universe simulator can be reused by other researchers to test AI agent systems without needing access to real corporate data
 

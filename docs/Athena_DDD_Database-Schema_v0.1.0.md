@@ -270,7 +270,7 @@ RETURN r.id, r.description, m.name, m.deadline
 | metadata.type | String | STORY, EPIC, RISK |
 | metadata.priority | String | Priority level |
 | metadata.status | String | Current status |
-| embedding | Vector[768] | Llama 3 embedding |
+| embedding | Vector[768] | LLMProvider embedding (Gemini or Llama 3, depending on active mode) |
 
 ### 4.2 Collection: meeting_notes
 
@@ -280,7 +280,7 @@ RETURN r.id, r.description, m.name, m.deadline
 | document | String | Full meeting transcript |
 | metadata.date | Date | Meeting date |
 | metadata.attendees | Array[String] | List of participant emails |
-| embedding | Vector[768] | Llama 3 embedding |
+| embedding | Vector[768] | LLMProvider embedding (Gemini or Llama 3, depending on active mode) |
 
 ---
 
@@ -322,3 +322,4 @@ RETURN r.id, r.description, m.name, m.deadline
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 0.1.0 | 2026-02-05 | Team Athena | Initial database schema definition |
+| 0.1.1 | 2026-02-20 | Team Athena | Updated embedding references for dual-mode LLMProvider (Gemini/Ollama) |

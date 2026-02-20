@@ -12,10 +12,10 @@
 This Software Requirements Specification (SRS) document provides a complete description of the functional and non-functional requirements for Project Athena. It serves as the primary reference for the development team during system design, implementation, and testing phases. The document is intended for all stakeholders including the development team, project guide, and evaluation panel.
 
 ### 1.2 Scope
-Project Athena is an Autonomous Multi-Agent Framework that provides real-time program management and proactive risk mitigation for enterprise environments. The system operates within a self-contained simulation environment (Project Universe) and demonstrates MNC-grade capabilities using privacy-first, locally-deployed infrastructure. The system:
+Project Athena is an Autonomous Multi-Agent Framework that provides real-time program management and proactive risk mitigation for enterprise environments. The system operates within a self-contained simulation environment (Project Universe) and demonstrates MNC-grade capabilities using a dual-mode LLM architecture (cloud API for development, local LLM for air-gapped deployment). The system:
 - **Ingests** real-time project events via webhooks from a simulated enterprise environment
 - **Stores** structured relationships in a Knowledge Graph and unstructured context in a Vector Store
-- **Reasons** using a multi-agent LangGraph state machine powered by a local LLM
+- **Reasons** using a multi-agent LangGraph state machine powered by an LLM via a pluggable `LLMProvider` abstraction
 - **Alerts** stakeholders proactively when risks are detected, with human-in-the-loop approval
 - **Logs** every agent decision in an auditable Action & Tracking Log (ATL)
 
@@ -42,6 +42,7 @@ Project Athena is an Autonomous Multi-Agent Framework that provides real-time pr
 | Human Gate | A checkpoint in the agent workflow requiring human approval before proceeding |
 | LangGraph | A Python framework for building stateful, multi-actor applications with LLMs |
 | LLM | Large Language Model — a deep learning model trained on large text corpora |
+| LLMProvider | An abstraction layer with pluggable backends (Gemini for dev, Ollama for air-gapped demo) |
 | Neo4j | A graph database that stores data as nodes and relationships |
 | Ollama | An open-source framework for running LLMs locally |
 | RAG | Retrieval-Augmented Generation — grounding LLM responses in external knowledge |
@@ -68,26 +69,28 @@ Project Athena is an Autonomous Multi-Agent Framework that provides real-time pr
 Athena is a self-contained system that does NOT integrate with any external production tools. Instead, it creates its own simulated enterprise environment (Project Universe) and then monitors that environment autonomously.
 
 ```
- EXTERNAL WORLD (Not accessed)          ATHENA SYSTEM BOUNDARY
+ EXTERNAL WORLD                       ATHENA SYSTEM BOUNDARY
 +-----------------------------+      +==========================================+
 |                             |      ||                                        ||
 |  Real Jira       ╳ --------|----->||  Project Universe (Simulator)           ||
 |  Real Azure DevOps ╳ ------|----->||    └──> Mock Jira API                   ||
 |  Real ServiceNow   ╳ -----|----->||    └──> Chaos Engine                    ||
 |                             |      ||    └──> Webhook Dispatcher              ||
-|  Cloud LLM APIs    ╳ -----|----->||                                        ||
-|  (OpenAI, Claude)          |      ||  Athena Core (Agent)                   ||
+|  Cloud LLM APIs             |      ||                                        ||
+|  (OpenAI, Claude)  ╳       |      ||  Athena Core (Agent)                   ||
 |                             |      ||    └──> Ingestion Pipeline              ||
-+-----------------------------+      ||    └──> GraphRAG (Neo4j + ChromaDB)     ||
-       All blocked                   ||    └──> LangGraph Agent Brain           ||
-       (Air-gapped)                  ||    └──> Ollama + Llama 3 (LOCAL)        ||
-                                     ||                                        ||
+|  Google Gemini     ✓ ------+----->||    └──> GraphRAG (Neo4j + ChromaDB)     ||
+|  (Dev Mode Only)           |      ||    └──> LangGraph Agent Brain           ||
++-----------------------------+      ||    └──> LLMProvider Abstraction         ||
+  Real PM tools: Blocked             ||         ├── GeminiProvider (Dev Mode)   ||
+  Gemini API: Dev mode only          ||         └── OllamaProvider (Demo Mode)  ||
+  Ollama: Demo/air-gapped mode       ||                                        ||
                                      ||  Dashboard (Next.js)                   ||
                                      ||    └──> Chat Interface                  ||
                                      ||    └──> Health Dashboard                ||
                                      ||    └──> God Mode Console                ||
                                      +==========================================+
-                                            Everything runs on localhost
+                                        Services run on localhost (both modes)
 ```
 
 ### 2.2 Product Features (Summary)
@@ -116,22 +119,25 @@ Athena is a self-contained system that does NOT integrate with any external prod
 
 ### 2.4 Operating Environment
 
-| Component | Specification |
-|-----------|--------------|
-| Host OS | Windows 10/11, macOS, or Linux (via Docker) |
-| Container Runtime | Docker Engine 24.0+, Docker Compose v2+ |
-| Network | Localhost only (no external connectivity required) |
-| RAM | Minimum 16 GB (32 GB recommended) |
-| Storage | 50 GB minimum |
-| GPU | Optional: NVIDIA RTX 3060+ with CUDA 11.8+ for accelerated inference |
-| Browser | Chrome, Firefox, or Edge (for Dashboard) |
+**Development Machine:** Lenovo LOQ — Intel i5-13450HX (12C/16T), 16 GB DDR5 RAM, NVIDIA RTX 3050 6GB VRAM
+
+| Component | Dev Mode (Cloud LLM) | Demo Mode (Local LLM) |
+|-----------|---------------------|----------------------|
+| Host OS | Windows 10/11, macOS, or Linux (via Docker) | Same |
+| Container Runtime | Docker Engine 24.0+, Docker Compose v2+ | Same |
+| Network | Internet (Google Gemini API calls) | Localhost only (air-gapped) |
+| RAM Usage | ~7 GB (services only) | ~12-14 GB (services + Ollama) |
+| GPU Usage | Not required | RTX 3050 6GB (Llama 3 Q4 inference) |
+| Storage | 20 GB | 25 GB (+ Llama 3 model weights) |
+| Browser | Chrome, Firefox, or Edge (for Dashboard) | Same |
 
 ### 2.5 Design and Implementation Constraints
 
 | Constraint | Rationale |
 |-----------|-----------|
-| All processing must be local (air-gapped) | Privacy-first design; no external API calls |
-| LLM limited to 8B parameters | Hardware constraint (16GB RAM target) |
+| Dual-mode LLM: Cloud (dev) + Local (demo) | 16GB RAM cannot run all services + local LLM + dev tools simultaneously |
+| LLM backends limited to Gemini Flash and Llama 3 8B Q4 | Free tier API for dev; Q4 quantization fits in 6GB VRAM for demo |
+| LLMProvider abstraction required | Ensures agent logic is decoupled from any specific LLM backend |
 | SQLite for simulator DB | Lightweight, zero-configuration, suitable for simulation |
 | Docker Compose orchestration | Single-command deployment requirement |
 | Python 3.11+ for backend | LangGraph and py2neo compatibility |
@@ -142,14 +148,16 @@ Athena is a self-contained system that does NOT integrate with any external prod
 | # | Assumption / Dependency |
 |---|------------------------|
 | A1 | Docker and Docker Compose are installed on the deployment machine |
-| A2 | The Llama 3 8B model has been pulled via Ollama before first use |
-| A3 | Minimum 16 GB of available RAM is allocated to Docker |
-| A4 | No concurrent resource-intensive applications during demo |
+| A2 | **Dev mode:** Google AI Studio API key is configured in `.env` (`GEMINI_API_KEY`) |
+| A3 | **Demo mode:** The Llama 3 8B Q4 model has been pulled via Ollama before first use |
+| A4 | **Demo mode:** No concurrent resource-intensive applications (IDE, browser closed) |
 | A5 | The evaluator uses a modern web browser (Chrome/Firefox/Edge) |
+| A6 | `LLM_BACKEND` env variable is set to `gemini` (dev) or `ollama` (demo) |
 | D1 | LangGraph library version ≥ 0.1.0 |
 | D2 | Neo4j Community Edition 5.x Docker image |
 | D3 | ChromaDB version ≥ 0.4.0 |
-| D4 | Ollama version ≥ 0.1.0 with Llama 3 8B model |
+| D4 | Ollama version ≥ 0.1.0 with Llama 3 8B Q4 model (demo mode only) |
+| D5 | Google Generative AI Python SDK (`google-generativeai`) (dev mode only) |
 
 ---
 
@@ -181,7 +189,7 @@ Athena is a self-contained system that does NOT integrate with any external prod
  │        │ └─────────┘ │         │               │                 │          │
  │        │             │         │  ┌────────────┴───────────────┐  │          │
  │        │ ┌─────────┐ │  Chaos  │  │     Inference Layer        │  │          │
- │        │ │Evaluator│─┼────────>│  │  (Ollama + Llama 3)        │  │          │
+ │        │ │Evaluator│─┼────────>│  │  (LLMProvider Abstraction)  │  │          │
  │        │ └─────────┘ │         │  └───────────────────────────┘  │          │
  │        │             │         │                                  │          │
  │        └─────────────┘         └──────────────────────────────────┘          │
@@ -204,7 +212,7 @@ Athena is a self-contained system that does NOT integrate with any external prod
 | Evaluator | Human (Special) | Demo observer with access to God Mode for chaos injection | Triggers chaos events; observes system response; validates behavior |
 | Project Universe | System (Internal) | Simulated enterprise PM environment generating events | Sends webhooks on state changes; provides REST API for data queries |
 | Chaos Engine | System (Internal) | Automated failure injection subsystem | Randomly mutates simulator state; creates blockers and overloads |
-| Ollama/Llama 3 | System (Internal) | Local LLM inference server | Processes natural language; generates responses; creates embeddings |
+| LLMProvider | System (Internal) | Pluggable LLM inference layer | Processes natural language; generates responses via Gemini (dev) or Ollama (demo) |
 
 ---
 
@@ -250,7 +258,7 @@ Athena is a self-contained system that does NOT integrate with any external prod
 | ID | Requirement | Priority | Rationale |
 |----|-------------|----------|-----------|
 | FR-04.1 | The Vector Indexer SHALL maintain two collections: `ticket_context` (ticket titles, descriptions, comments) and `meeting_notes` (generated summaries and risk reports) | HIGH | Separate collections for different content types |
-| FR-04.2 | Text SHALL be embedded using the local Llama 3 model via Ollama embeddings endpoint | HIGH | Privacy-first — no external embedding APIs |
+| FR-04.2 | Text SHALL be embedded using the active LLMProvider backend: Gemini Embedding API (dev mode) or Ollama embeddings endpoint (demo mode) | HIGH | Dual-mode support; both backends produce compatible embeddings |
 | FR-04.3 | Each vector entry SHALL store metadata: source_entity_id, entity_type, timestamp, and original_text | HIGH | Enables citation tracing |
 | FR-04.4 | Semantic search SHALL return top-K (configurable, default K=5) most similar documents with similarity scores | HIGH | Tunable retrieval quality |
 | FR-04.5 | The Vector Indexer SHALL update embeddings when the source entity's text fields change | MEDIUM | Keeps semantic index consistent |
@@ -338,11 +346,12 @@ Athena is a self-contained system that does NOT integrate with any external prod
 
 | ID | Requirement | Target | Measurement Method |
 |----|-------------|--------|-------------------|
-| NFR-03.1 | Data sovereignty | 100% local processing | Network traffic analysis (no external calls) |
-| NFR-03.2 | Audit trail completeness | 100% of agent actions logged | Compare agent state transitions with ATL entries |
-| NFR-03.3 | Human approval enforcement | 100% of sensitive actions require approval | Verify no alert or escalation bypasses Human Gate |
-| NFR-03.4 | No credential storage | No cleartext passwords or tokens in codebase | Static code analysis |
-| NFR-03.5 | Container isolation | Each service in its own container with minimal privileges | Docker security audit |
+| NFR-03.1 | Data sovereignty (demo mode) | 100% local processing when `LLM_BACKEND=ollama` | Network traffic analysis (no external calls in demo mode) |
+| NFR-03.2 | Data sovereignty (dev mode) | Only LLM prompts sent externally (to Gemini API); project data stays local | Network traffic audit — only `generativelanguage.googleapis.com` calls |
+| NFR-03.3 | Audit trail completeness | 100% of agent actions logged | Compare agent state transitions with ATL entries |
+| NFR-03.4 | Human approval enforcement | 100% of sensitive actions require approval | Verify no alert or escalation bypasses Human Gate |
+| NFR-03.5 | No credential storage | API keys in `.env` only (gitignored); no cleartext in codebase | Static code analysis |
+| NFR-03.6 | Container isolation | Each service in its own container with minimal privileges | Docker security audit |
 
 ### NFR-04: Portability & Deployment
 
@@ -791,7 +800,7 @@ MAIN SUCCESS SCENARIO:
 | NFR-01.1 | UC-01 | TC-PRF-001 | Verify query response < 5 seconds (P95) | HIGH |
 | NFR-01.3 | UC-02 | TC-PRF-002 | Verify risk detection < 60 seconds | HIGH |
 | NFR-02.3 | UC-01 | TC-PRF-003 | Verify 0% hallucination on 100-response audit | HIGH |
-| NFR-03.1 | All | TC-SEC-001 | Verify zero external network calls | HIGH |
+| NFR-03.1 | All | TC-SEC-001 | Verify zero external network calls in demo mode; only Gemini API calls in dev mode | HIGH |
 | NFR-04.1 | All | TC-DEP-001 | Verify single docker-compose up deployment | HIGH |
 
 ---
@@ -808,7 +817,7 @@ MAIN SUCCESS SCENARIO:
 | 6 | Agent never fabricates data | 100% of factual claims in responses are backed by Neo4j/ChromaDB data |
 | 7 | Sensitive actions require human approval | No alert or escalation bypasses the Human Gate |
 | 8 | Complete audit trail exists | Every agent action has a corresponding ATL entry |
-| 9 | System works completely offline | Full demo runs without any internet connectivity |
+| 9 | System works in air-gapped mode (demo) | Set `LLM_BACKEND=ollama`, disconnect internet, full demo runs offline |
 | 10 | Dashboard displays real-time health | RAG indicators update within 30 seconds of state change |
 
 ---
@@ -819,3 +828,4 @@ MAIN SUCCESS SCENARIO:
 |---------|------|--------|---------|
 | 0.1.0 | 2026-02-05 | Team Athena | Initial requirements specification |
 | 0.2.0 | 2026-02-19 | Team Athena | Comprehensive SRS with detailed FR/NFR, 5 use cases with sequence diagrams, DFDs, data dictionary, traceability matrix, acceptance criteria |
+| 0.2.1 | 2026-02-20 | Team Athena | Updated for hybrid dual-mode LLM architecture: LLMProvider abstraction, Gemini (dev) + Ollama (demo), hardware specs updated to actual development machine |
