@@ -1,0 +1,102 @@
+services:
+  sim-api:
+    build: 
+      context: ./simulator
+    container_name: sim-api
+    ports:
+      - "8001:8001"
+    environment:
+      - DB_PATH=/data/simulator.db
+      - WEBHOOK_URL=${WEBHOOK_URL}
+    volumes:
+      - ./data:/data
+    networks:
+      - athena-network
+
+  sim-chaos:
+    build: 
+      context: ./simulator
+    container_name: sim-chaos
+    environment:
+      - SIM_API_URL=http://sim-api:8001
+    depends_on:
+      - sim-api
+    networks:
+      - athena-network
+
+  athena-core:
+    build: 
+      context: ./core
+    container_name: athena-core
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - LLM_BACKEND=${LLM_BACKEND}
+      - NEO4J_URI=${NEO4J_URI}
+      - NEO4J_USERNAME=${NEO4J_USERNAME}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
+      - CHROMA_HOST=${CHROMA_HOST}
+      - CHROMA_PORT=${CHROMA_PORT}
+      - SIMULATOR_API_URL=${SIMULATOR_API_URL}
+      - OLLAMA_HOST=http://ollama:11434
+    depends_on:
+      - graph-db
+      - vector-db
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - athena-network
+
+  graph-db:
+    image: neo4j:5-community
+    container_name: graph-db
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=${NEO4J_USERNAME}/${NEO4J_PASSWORD}
+    volumes:
+      - ./neo4j_data:/data
+    networks:
+      - athena-network
+
+  vector-db:
+    image: chromadb/chroma:latest
+    container_name: vector-db
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./chroma_data:/chroma/chroma
+    networks:
+      - athena-network
+
+  dashboard:
+    build:
+      context: ./dashboard
+    container_name: dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_ATHENA_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_SIM_API_URL=http://localhost:8001
+    depends_on:
+      - athena-core
+    networks:
+      - athena-network
+
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama_models:/root/.ollama
+    profiles:
+      - demo
+    networks:
+      - athena-network
+
+networks:
+  athena-network:
+    driver: bridge

@@ -18,63 +18,19 @@
 ## 2. SDLC Phases
 
 ### Phase 1 — Requirements & Research (Weeks 1–3)
-| Activity | Deliverable |
-|----------|-------------|
-| Stakeholder analysis & problem definition | Synopsis |
-| Literature survey (15 papers) | Literature Survey Report |
-| Functional & non-functional requirements | SRS Document |
-| Use case modeling & actor identification | Use Case Diagrams |
-| Feasibility analysis (technical, economic) | Feasibility Study |
+This phase focuses on understanding the problem domain and establishing the project's foundation. Stakeholder analysis and problem definition are conducted to produce the Synopsis. A literature survey covering 15 research papers across multi-agent systems, GraphRAG, local LLM deployment, and AI-driven project management is completed. Functional and non-functional requirements are gathered through use case modeling and actor identification, resulting in the SRS document and use case diagrams. A feasibility study assessing technical, economic, and operational viability is also prepared during this phase.
 
 ### Phase 2 — System Design (Weeks 3–5)
-| Activity | Deliverable |
-|----------|-------------|
-| C4 architecture (L1 Context, L2 Container) | HLD Document |
-| Database schema design (SQLite, Neo4j, ChromaDB) | DDD Document |
-| API contract specification | OpenAPI Specs |
-| Agent state machine design | Agent FSM Spec |
-| UI/UX wireframes | Wireframe Mockups |
-| Docker Compose topology | Deployment Spec |
+The system architecture is designed using the C4 model (L1 Context, L2 Container), producing the HLD document. Database schemas for SQLite (relational), Neo4j (knowledge graph), and ChromaDB (vector store) are specified in the DDD document. API contracts are defined using OpenAPI specifications, and the LangGraph agent state machine is designed with defined nodes, edges, and conditional routing. UI/UX wireframes for the Next.js dashboard are created, and the Docker Compose service topology — including the dual-mode `LLMProvider` configuration — is finalized as the deployment specification.
 
 ### Phase 3 — Implementation (Weeks 5–9)
-| Activity | Deliverable |
-|----------|-------------|
-| Project Universe simulator (Jira-Sim API) | Simulator Service |
-| Chaos Engine (5 fault types + webhooks) | Chaos Service |
-| `LLMProvider` abstraction (Gemini + Ollama) | LLM Module |
-| LangGraph agent workflow (4 agents) | Agent Core |
-| GraphRAG pipeline (ingestion → Neo4j/ChromaDB) | Knowledge Pipeline |
-| Next.js 14 dashboard + chat interface | Frontend App |
-| Synthetic dataset generation | Test Data |
-| Docker environment & CI setup | Dev Environment |
+Core development begins with the Project Universe enterprise simulator, including the Jira-Sim REST API (FastAPI, 15+ endpoints), Chaos Engine (5 fault injection types), and Webhook Dispatcher. The `LLMProvider` abstraction layer is implemented with `GeminiProvider` and `OllamaProvider` backends, enabling seamless switching via the `LLM_BACKEND` environment variable. The LangGraph agent workflow (4 agents: Ingestion, Synthesis, Risk, Communication) is built along with the GraphRAG pipeline for ingesting data into Neo4j and ChromaDB. The Next.js 14 dashboard with chat interface and God Mode console is developed. Synthetic datasets and the Docker development environment are set up in parallel.
 
 ### Phase 4 — Testing & Validation (Weeks 9–11)
-| Activity | Deliverable |
-|----------|-------------|
-| Unit testing (pytest, Jest) | Test Reports |
-| Integration testing (inter-service) | Integration Report |
-| E2E Chaos Engine scenarios | E2E Demo Scripts |
-| Performance benchmarking | Benchmark Report |
-| Acceptance criteria validation | Acceptance Report |
-
-**Acceptance Criteria:**
-
-| Metric | Target |
-|--------|--------|
-| Query response time | < 5 seconds |
-| Risk detection latency | < 60 seconds |
-| Blocker identification | ≥ 95% detection |
-| Offline capability | 100% (demo mode) |
-| Hallucination rate | 0% (citation-backed) |
+Comprehensive testing is conducted across all layers. Unit tests (pytest, Jest) validate individual modules, while integration tests verify inter-service communication across Docker containers. End-to-end scenarios using the Chaos Engine validate the full pipeline from fault injection to agent alert generation. Performance benchmarking measures response times and throughput. The system is validated against acceptance criteria: query response under 5 seconds, risk detection latency under 60 seconds, blocker identification rate of at least 95%, zero hallucination (all responses citation-backed), and 100% offline capability in demo mode.
 
 ### Phase 5 — Documentation & Deployment (Weeks 11–15)
-| Activity | Deliverable |
-|----------|-------------|
-| IEEE-format technical paper | Research Paper |
-| Final project report | Project Report |
-| User manual | User Guide |
-| Demo preparation (dev + air-gapped) | Demo Package |
-| Hard-bound report & exhibition | Final Submission |
+Final documentation is prepared, including an IEEE-format technical paper, the complete project report, and a user manual. Demo packages are built for both deployment modes — cloud-connected development mode (Gemini) and air-gapped demonstration mode (Ollama). The hard-bound report is compiled and the system is prepared for the Pradarshana exhibition and final submission.
 
 ---
 

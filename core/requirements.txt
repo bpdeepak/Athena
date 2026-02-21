@@ -1,0 +1,9 @@
+fastapi[all]==0.110.0
+langgraph==0.0.30
+langchain==0.1.13
+langchain-core==0.1.37
+langchain-google-genai==1.0.1
+langchain-community==0.0.29
+neo4j==5.18.0
+chromadb==0.4.24
+python-dotenv==1.0.1
